@@ -6,11 +6,13 @@ const ctx = canvas.getContext('2d');
 canvas.width = 600;
 canvas.height = 600;
 
-const numberOfMissilesInARow = 3;
+let numberOfMissiles = 10;
 let frame = 0;
+const gameSpeed = 0.3;
+const grid = 40;
 
 const keys = [];
-
+const missiles = [];
 /*
     SPACESHIP
 */
@@ -117,6 +119,58 @@ class Spaceship {
 const spaceship = new Spaceship();
 
 /*
+    MISSILE
+*/
+class Missile {
+    constructor() {
+        this.height = 45;
+        this.width = 16;
+        this.x =
+            Math.floor(Math.random() * (canvas.width / grid)) * grid +
+            this.width;
+        this.y = 0 - this.height;
+        this.speed = Math.floor(Math.random() * 10) + 1;
+    }
+
+    draw() {
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + 4, this.y - 8);
+        ctx.lineTo(this.x + 4, this.y - 30);
+        ctx.lineTo(this.x + 8, this.y - 45);
+        ctx.lineTo(this.x - 8, this.y - 45);
+        ctx.lineTo(this.x - 4, this.y - 30);
+        ctx.lineTo(this.x - 4, this.y - 8);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    update() {
+        this.y += gameSpeed * this.speed;
+
+        if (this.y > canvas.height + this.height) {
+            this.y = 0 - this.height;
+            this.speed = Math.floor(Math.random() * 10) + 1;
+            this.x =
+                Math.floor(Math.random() * (canvas.width / grid)) * grid +
+                this.width;
+        }
+    }
+}
+
+for (let i = 0; i < numberOfMissiles; i++) {
+    missiles.push(new Missile());
+}
+
+function handleMissiles() {
+    for (let i = 0; i < missiles.length; i++) {
+        missiles[i].draw();
+        missiles[i].update();
+    }
+}
+
+/*
     UTILITIES
 */
 
@@ -125,6 +179,7 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     spaceship.draw();
     spaceship.update();
+    handleMissiles();
     requestAnimationFrame(animate);
 }
 animate();
