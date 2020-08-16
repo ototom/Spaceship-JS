@@ -6,10 +6,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = 600;
 canvas.height = 600;
 
-let numberOfMissiles = 10;
+let numberOfMissiles = 10; // initial number
+
 let frame = 0;
-const gameSpeed = 0.3;
+let gameSpeed = 0.3;
 const grid = 40;
+let timeInSec = 0;
 
 const keys = [];
 const missiles = [];
@@ -28,32 +30,59 @@ class Spaceship {
     }
 
     draw() {
-        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+
+        const gradientLeft = ctx.createLinearGradient(
+            this.x - this.width / 2,
+            this.y,
+            this.x + this.width / 2,
+            this.y
+        );
+        gradientLeft.addColorStop('0', 'rgba(0,0,0,1)');
+        gradientLeft.addColorStop('1', 'rgba(0,0,0,0.3)');
+
+        const gradientRight = ctx.createLinearGradient(
+            this.x - this.width / 2,
+            this.y,
+            this.x + this.width / 2,
+            this.y
+        );
+        gradientRight.addColorStop('0', 'rgba(0,0,0,0.3)');
+        gradientRight.addColorStop('1', 'rgba(0,0,0,1)');
 
         if (keys[37]) {
             // TURN LEFT
+            ctx.fillStyle = gradientLeft;
+            ctx.strokeStyle = gradientLeft;
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.x + this.width / 2, this.y + this.height);
             ctx.lineTo(this.x - this.width / 2 + 5, this.y + this.height - 5);
             ctx.closePath();
+            ctx.fill();
             ctx.stroke();
         } else if (keys[39]) {
             // TURN RIGHT
+            ctx.fillStyle = gradientRight;
+            ctx.strokeStyle = gradientRight;
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.x + this.width / 2 - 5, this.y + this.height - 5);
             ctx.lineTo(this.x - this.width / 2, this.y + this.height);
             ctx.closePath();
+            ctx.fill();
             ctx.stroke();
         } else {
             // INITIAL POSITION
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.x + this.width / 2, this.y + this.height);
             ctx.lineTo(this.x - this.width / 2, this.y + this.height);
             ctx.closePath();
             ctx.stroke();
+            ctx.fill();
 
             if (keys[38] && frame % Math.floor(Math.random() * 10) === 0) {
                 // add flame when spaceship accelerates
@@ -174,12 +203,35 @@ function handleMissiles() {
     UTILITIES
 */
 
+function updateTimer() {
+    const timerMinutes = Math.floor(timeInSec / 60);
+    const timerSeconds =
+        timeInSec % 60 < 10 ? `0${timeInSec % 60}` : timeInSec % 60;
+
+    ctx.textAlign = 'left';
+    ctx.font = '20px Arial';
+    ctx.fillText(`${timerMinutes}:${timerSeconds}`, 20, 30);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Game speed: ${gameSpeed.toFixed(2)}`, canvas.width - 20, 30);
+}
+
+setInterval(() => {
+    timeInSec++;
+    if (timeInSec % 30 === 0 && timeInSec > 0) {
+        gameSpeed += 0.05;
+    }
+    if (timeInSec % 60 === 0 && timeInSec > 0) {
+        missiles.push(new Missile());
+    }
+}, 1000);
+
 function animate() {
     frame++;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     spaceship.draw();
     spaceship.update();
     handleMissiles();
+    updateTimer();
     requestAnimationFrame(animate);
 }
 animate();
