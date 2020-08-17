@@ -7,14 +7,19 @@ canvas.width = 600;
 canvas.height = 600;
 
 let numberOfMissiles = 10; // initial number
-
-let frame = 0;
-let gameSpeed = 0.3;
 const grid = 40;
+const FPS = 60;
+let gameSpeed = 0.3;
 let timeInSec = 0;
+let frame = 0;
+let lastCollisionFrame = 0;
+const respawnTimeInSec = 3;
+let collisions = 0;
+let canBeCrashed = true;
 
 const keys = [];
-const missiles = [];
+let missiles = [];
+
 /*
     SPACESHIP
 */
@@ -193,9 +198,11 @@ for (let i = 0; i < numberOfMissiles; i++) {
 }
 
 function handleMissiles() {
-    for (let i = 0; i < missiles.length; i++) {
-        missiles[i].draw();
-        missiles[i].update();
+    if (missiles.length > 0) {
+        for (let i = 0; i < missiles.length; i++) {
+            missiles[i].draw();
+            missiles[i].update();
+        }
     }
 }
 
@@ -203,16 +210,20 @@ function handleMissiles() {
     UTILITIES
 */
 
+// TIMER
+
 function updateTimer() {
     const timerMinutes = Math.floor(timeInSec / 60);
     const timerSeconds =
         timeInSec % 60 < 10 ? `0${timeInSec % 60}` : timeInSec % 60;
 
+    ctx.fillStyle = 'black';
     ctx.textAlign = 'left';
     ctx.font = '20px Arial';
     ctx.fillText(`${timerMinutes}:${timerSeconds}`, 20, 30);
     ctx.textAlign = 'right';
     ctx.fillText(`Game speed: ${gameSpeed.toFixed(2)}`, canvas.width - 20, 30);
+    ctx.fillText(`Collisions: ${collisions}`, canvas.width - 20, 60);
 }
 
 setInterval(() => {
@@ -225,12 +236,123 @@ setInterval(() => {
     }
 }, 1000);
 
+// COLLISIONS
+
+function detectCollision(objA, objB) {
+    if (
+        // LEFT & RIGHT EDGES
+        // LEFT
+        ((objA.x - objA.width / 2 >= objB.x - objB.width / 2 &&
+            objA.x - objA.width / 2 <= objB.x + objB.width / 2) ||
+            // RIGHT
+            (objA.x + objA.width / 2 <= objB.x + objB.width / 2 &&
+                objA.x + objA.width / 2 >= objB.x - objB.width / 2)) &&
+        // TOP & BOTTOM EDGES
+        // TOP
+        ((objA.y <= objB.y && objA.y >= objB.y - objB.height) ||
+            // BOTTOM
+            (objA.y + objA.height <= objB.y &&
+                objA.y + objA.height >= objB.y - objB.height))
+    ) {
+        return true;
+    }
+    return false;
+}
+
+function drawCollision() {
+    // reset spaceship's starting point of coordinates system to top-left corner
+    const startPointX = spaceship.x - spaceship.width / 2;
+
+    ctx.strokeStyle = '#F1C40F';
+    ctx.lineWidth = 5;
+    ctx.fillStyle = '#E74C3C';
+
+    // show explosion for 1sec after collision
+    if (lastCollisionFrame + 10 >= frame && lastCollisionFrame > 0) {
+        ctx.beginPath();
+        ctx.moveTo(startPointX, spaceship.y);
+        ctx.lineTo(startPointX + 6, spaceship.y + 6);
+        ctx.lineTo(startPointX + 12, spaceship.y);
+        ctx.lineTo(startPointX + 12, spaceship.y + 6);
+        ctx.lineTo(startPointX + 18, spaceship.y + 9);
+        ctx.lineTo(startPointX + 12, spaceship.y + 12);
+        ctx.lineTo(startPointX + 15, spaceship.y + 18);
+        ctx.lineTo(startPointX + 6, spaceship.y + 12);
+        ctx.lineTo(startPointX - 3, spaceship.y + 18);
+        ctx.lineTo(startPointX, spaceship.y + 12);
+        ctx.lineTo(startPointX - 3, spaceship.y + 9);
+        ctx.lineTo(startPointX - 6, spaceship.y + 9);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+    }
+}
+
+function collisionHandler() {
+    if (!canBeCrashed) {
+        return;
+    }
+    for (let i = 0; i < missiles.length; i++) {
+        if (detectCollision(spaceship, missiles[i])) {
+            gameOverHandler();
+        }
+    }
+}
+
+// HANDLE GAME OVER AND RESPAWNING
+
+function gameOverHandler() {
+    // GLOBAL
+    gameSpeed = 0.3;
+    timeInSec = 0;
+    collisions++;
+    lastCollisionFrame = frame;
+
+    // SPACESHIP
+    spaceship.x = canvas.width / 2 - spaceship.width / 2;
+    spaceship.y = canvas.height - spaceship.height * 2;
+    spaceship.speed = 0;
+    spaceship.floating = 0;
+    spaceship.floatingDirection;
+
+    // RESET NUMBER OF MISSILES
+    missiles.length = numberOfMissiles;
+}
+
+function respawnHandler() {
+    ctx.fillStyle = 'tomato';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    let respawnTime =
+        lastCollisionFrame + respawnTimeInSec * FPS - frame >= 0
+            ? (
+                  (lastCollisionFrame + respawnTimeInSec * FPS - frame) /
+                  60
+              ).toFixed(2)
+            : 0;
+    if (respawnTime > 0 && lastCollisionFrame > 0) {
+        ctx.fillText(
+            `Respawn in: ${respawnTime}`,
+            canvas.width / 2,
+            canvas.height / 2 - 50
+        );
+        canBeCrashed = false;
+    } else {
+        canBeCrashed = true;
+    }
+}
+
+// ANIMATION & EVENT LISTENERS
+
 function animate() {
     frame++;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     spaceship.draw();
     spaceship.update();
     handleMissiles();
+    collisionHandler();
+    drawCollision();
+    respawnHandler();
     updateTimer();
     requestAnimationFrame(animate);
 }
